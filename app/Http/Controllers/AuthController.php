@@ -24,10 +24,10 @@ class AuthController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'surname' => 'required|string|max:255',
+            'surname' => 'string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'username' => 'required|string|max:255|unique:users',
+            'username' => 'string|max:255|unique:users',
         ]);
         if ($validator->fails()) {
             return response()->json($validator->errors(), Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -46,7 +46,9 @@ class AuthController extends Controller
         // Generate a new token for the user
         $token = $user->createToken('auth_token')->plainTextToken;
         // Return the token in the response
-        return response()->json(['token' => $token], Response::HTTP_CREATED);
+        $user = $this->getUserByEmail($request->input('email'));
+        /* ret */
+        return response()->json(['token' => $token, 'user' => $user], Response::HTTP_CREATED);
      } catch (\Throwable $th) {
         // Handle any errors that may occur
         return response()->json(['error' => 'User registration failed ' . $th->getMessage()], 500);
@@ -74,8 +76,15 @@ class AuthController extends Controller
             // Generate a new token for the user
             $token = $user->createToken('auth_token')->plainTextToken;
 
-            // Return the token in the response
-            return response()->json(['token' => $token], Response::HTTP_OK);
+            // Return the token in the response 
+
+            $user = $this->getUserByEmail($request->input('email'));
+            return response()->json(
+                [
+                    'token' => $token, 
+                    'user' => $user
+                ], Response::HTTP_OK);
+            
         } catch (\Exception $e) {
             return response()->json(['error' => 'Unauthorized ' . $e->getMessage()], Response::HTTP_UNAUTHORIZED);
         } catch (\Throwable $th) {
@@ -99,7 +108,7 @@ class AuthController extends Controller
 
         if (!auth('sanctum')->check()) {
             return response()->json([
-                'error' => 'Invalid or expired token',
+                'error' => 'Invalid or expired tokensssssssssss',
             ], Response::HTTP_UNAUTHORIZED);
         }
         // Return the authenticated user
@@ -107,7 +116,40 @@ class AuthController extends Controller
 
         return response()->json([
             'user' =>  $auth,
+            'token' => $token,
         ]);
+    }
+
+    public function getUserByEmail($email){
+        $user = User::where('email', $email)->first();
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], Response::HTTP_NOT_FOUND);
+        }
+        $user->makeHidden(['password', 'remember_token']);
+        return $user;
+    }
+
+    public function renewToken(Request $request)
+    {
+        $token = $request->bearerToken();
+       
+        
+        if (!$token) {
+            return response()->json([
+                'error' => 'Token not provided',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+        
+        // Return the authenticated user
+        $auth = auth('sanctum')->user();
+        // Generate a new token for the user
+        $token = $auth->createToken('auth_token')->plainTextToken;
+
+
+        return response()->json([
+            'token' => $token,
+            'user' => $auth,
+        ], Response::HTTP_OK);
     }
 
     

@@ -36,6 +36,8 @@ class EnterpriseTypeController extends Controller
      */
     public function store(Request $request)
     {   
+        $validated = $request->validated();
+        
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:enterprise_types',
             'description' => 'nullable|string|max:1000',
